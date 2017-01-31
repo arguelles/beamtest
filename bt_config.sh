@@ -1,4 +1,4 @@
-# /bin/sh
+#!/bin/sh
 #
 # Tyler Anderson Wed Nov  5 10:12:38 EST 2014
 # Simple example script for controlling DDC2
@@ -8,7 +8,7 @@
 # 0: Normal (outputs header, footer, local time word, data) 
 # 1: Metered (auto-triggered, collects enough test runs for 100ksamples, good for realtime performance metrics)
 # 2: Sparse (good for redirecting data to file)
-echo "RUNTIME_MODE 0"
+echo "RUNTIME_MODE 2"
 
 # Trigger mode
 # 0: Normal (retriggerable on threshold crossing)
