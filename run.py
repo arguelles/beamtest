@@ -47,6 +47,10 @@ def parse_args():
         '-t', '--time', type=int, metavar='INT', default=5,
         help='''Number of seconds to run DDC2'''
     )
+    parser.add_argument(
+        '-v', '--verbose', action='store_true', default=False,
+        help='''Verbose'''
+    )
     args = parser.parse_args()
     return args
 
@@ -71,6 +75,36 @@ def parse(arr_str):
     return arr_str.rstrip().replace(' ', '').split(',')[:-1]
 
 
+def clean_data(raw_data, verbose):
+    if verbose:
+        print 'raw_data', raw_data
+        print 'raw_data.shape', raw_data.shape
+    uc_timings, uc_run_counts = np.unique(raw_data[:,0], return_counts=True)
+    if verbose:
+        print 'uc_timings', uc_timings
+        print 'uc_run_counts', uc_run_counts
+
+    n_of_runs = set(uc_run_counts)
+    if len(n_of_runs) != 1 and len(n_of_runs) != 2:
+        raise AssertionError(
+            'Something bad happened!\nn_of_runs = {0}\nlen(n_of_runs) = '
+            '{1}'.format(n_of_runs, len(n_of_runs))
+        )
+
+    if len(n_of_runs) == 2:
+        n_incomplete_pulse = np.sum(uc_run_counts == np.max(list(n_of_runs)))
+        print 'n_incomplete_pulse', n_incomplete_pulse
+        clean_data = raw_data[:-n_incomplete_pulse]
+    else:
+        clean_data = raw_data
+
+    if verbose:
+        print 'clean_data', clean_data
+        print 'clean_data.shape', clean_data.shape
+
+    return clean_data
+
+
 def main():
     args = parse_args()
     print '=========='
@@ -84,14 +118,14 @@ def main():
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
 
-    arr = []
+    raw_data = []
     skip_intro = True
     idx = 0
     try:
         for line in iter(process.stdout.readline, b''):
             if skip_intro:
                 try:
-                    float(line.split(',')[0])
+                    int(line.split(',')[0])
                 except:
                     print line,
                     if 'INVALID' in line:
@@ -101,22 +135,37 @@ def main():
                 else:
                     if idx < 10:
                         raise AssertionError('Reset the DDC2 and run again')
-                    arr.append(map(float, parse(line)))
                     start_t = timer()
                     skip_intro = False
             time = timer()
-            # print 'time = {0}'.format(time - start_t)
+            if args.verbose:
+                # print 'time = {0}'.format(time - start_t)
+                print line,
             if time - start_t > args.time:
                 break
-            arr.append(map(float, parse(line)))
+            raw_data.append(map(int, parse(line)))
     except:
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
         raise
     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
-    arr = np.array(arr)
-    print arr
-    print arr.shape
+    raw_data = np.array(raw_data)
+    data = clean_data(raw_data, args.verbose)
+
+    timings, run_counts = np.unique(data[:,0], return_counts=True)
+
+    if len(set(run_counts)) != 1:
+        raise AssertionError(
+            'Something bad happened!\nrun_counts = {0}\nlen(set(run_counts)) '
+            '= {1}'.format(run_counts, len(set(run_counts)))
+        )
+    run_counts = run_counts[0]
+
+    trns_data = data.reshape(run_counts, len(timings), data.shape[1])
+    if args.verbose:
+        print 'trns_data', trns_data
+        print 'trns_data.shape', trns_data.shape
+
     print '=========='
     print 'DONE'
     print '=========='
