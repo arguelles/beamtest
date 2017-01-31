@@ -1,10 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 """
 Plot waveforms through nios2-terminal
 """
 import os, sys
 import signal
 import subprocess
+import numpy as np
 from timeit import default_timer as timer
 import argparse
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -43,7 +44,7 @@ def parse_args():
         help='''DDC2 download file'''
     )
     parser.add_argument(
-        '-t', '--time', type=int, metavar='INT', default=10,
+        '-t', '--time', type=int, metavar='INT', default=5,
         help='''Number of seconds to run DDC2'''
     )
     args = parser.parse_args()
@@ -52,7 +53,6 @@ def parse_args():
 
 def run_setup(command):
     """Run the setup to start taking data"""
-    print '=========='
     print 'Executing command:', command
     print '=========='
     cmd = command.split()
@@ -67,29 +67,56 @@ def run_setup(command):
     return p3
 
 
+def parse(arr_str):
+    return arr_str.rstrip().replace(' ', '').split(',')[:-1]
+
+
 def main():
     args = parse_args()
     print '=========='
     print 'Running for {0}s'.format(args.time)
-    print '=========='
 
     process = run_setup(COMMAND.format(args.ddc_file, args.infile))
 
     def signal_handler(sig, frame):
-        print '=========='
         print 'Caught signal, cleaning up\n'
-        print '=========='
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
 
-    start_t = timer()
-    for line in iter(process.stdout.readline, b''):
-        time = timer()
-        if time - start_t > args.time:
-            break
-        print line,
+    arr = []
+    skip_intro = True
+    idx = 0
+    try:
+        for line in iter(process.stdout.readline, b''):
+            if skip_intro:
+                try:
+                    float(line.split(',')[0])
+                except:
+                    print line,
+                    if 'INVALID' in line:
+                        raise AssertionError('Reset the DDC2 and run again')
+                    idx += 1
+                    continue
+                else:
+                    if idx < 10:
+                        raise AssertionError('Reset the DDC2 and run again')
+                    arr.append(map(float, parse(line)))
+                    start_t = timer()
+                    skip_intro = False
+            time = timer()
+            # print 'time = {0}'.format(time - start_t)
+            if time - start_t > args.time:
+                break
+            arr.append(map(float, parse(line)))
+    except:
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        raise
     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+
+    arr = np.array(arr)
+    print arr
+    print arr.shape
     print '=========='
     print 'DONE'
     print '=========='
