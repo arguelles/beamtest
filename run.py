@@ -184,6 +184,7 @@ def run(infile, ddc_file, time_lim, live, verbose):
             if time - start_t > time_lim:
                 break
             raw_data.append(line)
+
             if live:
                 d = map(int, parse(line))
                 if d[0] == 0:
