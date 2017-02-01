@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 """
-Plot waveforms through nios2-terminal
+Runs DDC2 through nios2-terminal
 """
 import os, sys
 import signal
@@ -17,6 +17,7 @@ COMMAND = 'nios2-download -g {0} && {1} | nios2-terminal'
 class FullPaths(argparse.Action):
     """Append user- and relative-paths"""
     def __call__(self, parser, namespace, values, option_string=None):
+        print values
         setattr(namespace, self.dest, os.path.abspath(os.path.expanduser(values)))
 
 
@@ -48,6 +49,15 @@ def parse_args():
         help='''Number of seconds to run DDC2'''
     )
     parser.add_argument(
+        '-o', '--outfile', type=str, default='./data/test/test',
+        metavar='FILE', required=False,
+        help='''Output location of data (no need to include file extension)'''
+    )
+    parser.add_argument(
+        '--live', action='store_true', default=False,
+        help='''Live visualisation'''
+    )
+    parser.add_argument(
         '-v', '--verbose', action='store_true', default=False,
         help='''Verbose'''
     )
@@ -72,10 +82,12 @@ def run_setup(command):
 
 
 def parse(arr_str):
+    """Parse the string from nios2-terminal"""
     return arr_str.rstrip().replace(' ', '').split(',')[:-1]
 
 
 def clean_data(raw_data, verbose):
+    """Remove the data which only partially captures a full waveform"""
     if verbose:
         print 'raw_data', raw_data
         print 'raw_data.shape', raw_data.shape
@@ -92,8 +104,15 @@ def clean_data(raw_data, verbose):
         )
 
     if len(n_of_runs) == 2:
+        if np.diff(list(n_of_runs))[0] != 1:
+            raise AssertionError(
+                'Something bad happened!\nn_of_runs = '
+                '{0}\nnp.diff(list(n_of_runs))[0] = '
+                '{1}'.format(n_of_runs, np.diff(list(n_of_runs))[0])
+            )
         n_incomplete_pulse = np.sum(uc_run_counts == np.max(list(n_of_runs)))
-        print 'n_incomplete_pulse', n_incomplete_pulse
+        if verbose:
+            print 'n_incomplete_pulse', n_incomplete_pulse
         clean_data = raw_data[:-n_incomplete_pulse]
     else:
         clean_data = raw_data
@@ -105,12 +124,12 @@ def clean_data(raw_data, verbose):
     return clean_data
 
 
-def main():
-    args = parse_args()
+def run(infile, ddc_file, time_lim, live, verbose):
+    """Main function to run FPGA and DDC2 chain and collect the data"""
     print '=========='
-    print 'Running for {0}s'.format(args.time)
+    print 'Running for {0}s'.format(time_lim)
 
-    process = run_setup(COMMAND.format(args.ddc_file, args.infile))
+    process = run_setup(COMMAND.format(ddc_file, infile))
 
     def signal_handler(sig, frame):
         print 'Caught signal, cleaning up\n'
@@ -120,8 +139,20 @@ def main():
 
     raw_data = []
     skip_intro = True
+    skip_initial_wv = True
     idx = 0
     try:
+        if live:
+            from matplotlib import pyplot as plt
+            plt.ion()
+            fig = plt.figure(figsize=(12, 8))
+            ax = fig.add_subplot(111)
+            ax.set_xlabel('Time (4ns)')
+            ax.set_ylabel('Voltage (A.U.)')
+            xmax = 1
+            ymin, ymax = (999999, 1)
+            live_data = []
+
         for line in iter(process.stdout.readline, b''):
             if skip_intro:
                 try:
@@ -137,20 +168,48 @@ def main():
                         raise AssertionError('Reset the DDC2 and run again')
                     start_t = timer()
                     skip_intro = False
+                    continue
+            if skip_initial_wv:
+                time = timer()
+                # Wait before recording any data to flush previous buffer
+                if time - start_t < 2 or int(line.split(',')[0]) != 0:
+                    continue
+                else:
+                    start_t = timer()
+                    skip_initial_wv = False
             time = timer()
-            if args.verbose:
+            if verbose:
                 # print 'time = {0}'.format(time - start_t)
                 print line,
-            if time - start_t > args.time:
+            if time - start_t > time_lim:
                 break
-            raw_data.append(map(int, parse(line)))
+            raw_data.append(line)
+            if live:
+                d = map(int, parse(line))
+                if d[0] == 0:
+                    if live_data == []: continue
+                    ax.set_xlim(0, xmax)
+                    ax.set_ylim(ymin, ymax)
+                    ld = np.vstack(live_data)
+                    ax.scatter(ld[:,0], ld[:,1], marker='o', c='crimson')
+                    ax.plot(ld[:,0], ld[:,1], linestyle='--', linewidth=1,
+                            c='crimson')
+                    plt.pause(0.001)
+                    ax.cla()
+                    live_data = []
+                if d[0] > xmax: xmax = d[0]
+                if d[1] < ymin: ymin = d[1]
+                if d[1] > ymax: ymax = d[1]
+                live_data.append([d[0], d[1]])
     except:
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
         raise
     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
+    for idx in range(len(raw_data)):
+        raw_data[idx] = map(int, parse(raw_data[idx]))
     raw_data = np.array(raw_data)
-    data = clean_data(raw_data, args.verbose)
+    data = clean_data(raw_data, verbose)
 
     timings, run_counts = np.unique(data[:,0], return_counts=True)
 
@@ -162,9 +221,29 @@ def main():
     run_counts = run_counts[0]
 
     trns_data = data.reshape(run_counts, len(timings), data.shape[1])
-    if args.verbose:
+    if verbose:
         print 'trns_data', trns_data
         print 'trns_data.shape', trns_data.shape
+
+    return trns_data
+
+
+def main():
+    args = parse_args()
+    data = run(args.infile, args.ddc_file, args.time, args.live, args.verbose)
+
+    print 'Number of waveforms = {0}'.format(data.shape[0])
+
+    of = args.outfile
+    idx = 0
+    if '_000' not in of:
+        of += '_000'
+    while os.path.exists(of+'.npy'):
+        of = of.replace('_{0:003d}'.format(idx), '_{0:003d}'.format(idx+1))
+        idx += 1
+    of += '.npy'
+    print 'Saving to file', of
+    np.save(of, data)
 
     print '=========='
     print 'DONE'

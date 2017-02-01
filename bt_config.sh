@@ -79,7 +79,7 @@ echo "TAP_GET_BASELINE"
 echo "TAP_SET_TRIG_EN 1"
 
 # Length of Test run
-echo "AF_SET_TEST_CONFIG 300"
+echo "AF_SET_TEST_CONFIG 30"
 
 ############### HVS Commands #######################
 
