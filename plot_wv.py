@@ -4,6 +4,7 @@ Plots DDC2 waveforms
 """
 import argparse
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from operator import add
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
@@ -25,6 +26,10 @@ def parse_args():
         help='''Numpy files'''
     )
     parser.add_argument(
+        '-n', '--nplot', type=int, metavar='INT', required=False,
+        help='''Specify number of waveforms to plot'''
+    )
+    parser.add_argument(
         '-o', '--outfile', type=str, default='images/test.png',
         metavar='FILE', required=False, help='''Output location of plot'''
     )
@@ -32,7 +37,7 @@ def parse_args():
     return args
 
 
-def make_wv_plot(data, outfile):
+def make_wv_plot(data, outfile, nplot):
     """Make the waveform plot"""
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111)
@@ -40,9 +45,14 @@ def make_wv_plot(data, outfile):
     ax.set_xlabel('Time (4ns)')
     ax.set_ylabel('Voltage (A.U.)')
 
+    idx = 0
     for d in data:
-        ax.scatter(d[:,0], d[:,1], marker='o', c='crimson')
-        ax.plot(d[:,0], d[:,1], linestyle='--', linewidth=1, c='crimson')
+        if idx == nplot: break
+        for e in d:
+            if idx == nplot: break
+            ax.scatter(e[:,0], e[:,1], marker='o', c='crimson')
+            ax.plot(e[:,0], e[:,1], linestyle='--', linewidth=1, c='crimson')
+            idx += 1
 
     for ymaj in ax.yaxis.get_majorticklocs():
         ax.axhline(y=ymaj, ls=':', color='gray', alpha=0.7, linewidth=1)
@@ -58,9 +68,12 @@ def main():
     data = []
     for f in args.infiles:
         data.append(np.load(f))
-    data = np.vstack(data)
+    ntot = reduce(add, [x.shape[0] for x in data])
+    print 'Loaded {0} waveforms'.format(ntot)
 
-    make_wv_plot(data, args.outfile)
+    if args.nplot is not None: nplot = args.nplot
+    else: nplot = ntot
+    make_wv_plot(data, args.outfile, nplot)
 
     print '=========='
     print 'DONE'
