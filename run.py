@@ -144,6 +144,7 @@ def run(infile, ddc_file, time_lim, live, verbose):
     try:
         if live:
             from matplotlib import pyplot as plt
+            from matplotlib.offsetbox import AnchoredText
             plt.ion()
             fig = plt.figure(figsize=(12, 8))
             ax = fig.add_subplot(111)
@@ -191,10 +192,16 @@ def run(infile, ddc_file, time_lim, live, verbose):
                     if live_data == []: continue
                     ax.set_xlim(0, xmax)
                     ax.set_ylim(ymin, ymax)
+                    ax.xaxis.grid(True, which='major')
+                    ax.yaxis.grid(True, which='major')
                     ld = np.vstack(live_data)
                     ax.scatter(ld[:,0], ld[:,1], marker='o', c='crimson')
                     ax.plot(ld[:,0], ld[:,1], linestyle='--', linewidth=1,
                             c='crimson')
+                    at = AnchoredText('min = {0}\nmax = {1}'.format(ymin, ymax),
+                                      prop=dict(size=14), frameon=True, loc=1)
+                    at.patch.set_boxstyle("round,pad=0.,rounding_size=0.5")
+                    ax.add_artist(at)
                     plt.pause(0.001)
                     ax.cla()
                     live_data = []
