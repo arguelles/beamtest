@@ -8,7 +8,7 @@
 # 0: Normal (outputs header, footer, local time word, data) 
 # 1: Metered (auto-triggered, collects enough test runs for 100ksamples, good for realtime performance metrics)
 # 2: Sparse (good for redirecting data to file)
-echo "RUNTIME_MODE 2"
+echo "RUNTIME_MODE 0"
 
 # Trigger mode
 # 0: Normal (retriggerable on threshold crossing)
@@ -45,12 +45,13 @@ echo "ADC_HI_PERF_MODE 3"
 # 2:  32 samples of pre-trigger data
 # 3:  64 samples of pre-trigger data
 # 4: 128 samples of pre-trigger data
-echo "AF_SET_PRE_CONFIG 1"
+echo "AF_SET_PRE_CONFIG 3"
 
 # Set the length of fixed length records (requires AF_SET_CNST_RUN=1)
 # 0: Collect 256 samples 
 # >0: collect pretrigger length + 4x data argument, up to 8000 samples total
-echo "AF_SET_CNST_CONFIG 0"
+# echo "AF_SET_CNST_CONFIG 0"
+echo "AF_SET_CNST_CONFIG 4"
 
 ############### Trigger and Pipeline (TAP) Commands #######################
 
@@ -61,11 +62,10 @@ echo "TAP_SET_TRIG_EN 0"
 # echo "TAP_SET_LT 0"
 # Enable the "less than" trigger
 # echo "TAP_SET_LT 1"
-
 echo "TAP_SET_GT 1"
 
 # Set the relative trigger threshold (number of LSBs above or below baseline)
-echo "TAP_SET_THR 999"
+echo "TAP_SET_THR 13"
 
 # Detects baseline for relative trigger threshold
 # Takes average of a test run (256 samples by default) and adjusts

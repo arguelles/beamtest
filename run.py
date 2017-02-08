@@ -86,11 +86,12 @@ def parse(arr_str):
     return arr_str.rstrip().replace(' ', '').split(',')[:-1]
 
 
-def clean_data(raw_data, verbose):
+def check_data(raw_data, nsamples, verbose):
     """Remove the data which only partially captures a full waveform"""
     if verbose:
         print 'raw_data', raw_data
         print 'raw_data.shape', raw_data.shape
+
     uc_timings, uc_run_counts = np.unique(raw_data[:,0], return_counts=True)
     if verbose:
         print 'uc_timings', uc_timings
@@ -137,7 +138,7 @@ def run(infile, ddc_file, time_lim, live, verbose):
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
 
-    raw_data = []
+    str_data = []
     skip_intro = True
     skip_initial_wv = True
     idx = 0
@@ -173,25 +174,27 @@ def run(infile, ddc_file, time_lim, live, verbose):
             if skip_initial_wv:
                 time = timer()
                 # Wait before recording any data to flush previous buffer
-                if time - start_t < 2 or int(line.split(',')[0]) != 0:
+                if time - start_t < 2 or '---------------------------' in line:
                     continue
                 else:
                     start_t = timer()
                     skip_initial_wv = False
             time = timer()
             if verbose:
-                # print 'time = {0}'.format(time - start_t)
                 print line,
             if time - start_t > time_lim:
                 break
-            raw_data.append(line)
+            str_data.append(line)
 
             if live:
-                d = map(int, parse(line))
+                try: d = map(int, parse(line))
+                except: continue
+                if len(d) == 0: continue
                 if d[0] == 0:
                     if live_data == []: continue
                     ax.set_xlim(0, xmax)
-                    ax.set_ylim(ymin, ymax)
+                    # ax.set_ylim(ymin, ymax)
+                    ax.set_ylim(9070-1000, 9070+10)
                     ax.xaxis.grid(True, which='major')
                     ax.yaxis.grid(True, which='major')
                     ld = np.vstack(live_data)
@@ -214,10 +217,45 @@ def run(infile, ddc_file, time_lim, live, verbose):
         raise
     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
-    for idx in range(len(raw_data)):
-        raw_data[idx] = map(int, parse(raw_data[idx]))
+    n_count = 0
+    nsamples = 0
+    timestamp = 0
+    local_time = 0
+    raw_data = []
+    for idx in range(len(str_data)):
+        if 'Nsamples' in str_data[idx] and nsamples == 0:
+            nsamples = int(str_data[idx].split()[2])
+            continue
+        if 'timestamp' in str_data[idx]:
+            timestamp = int(str_data[idx].split()[3][:-1])
+            continue
+        if 'local time' in str_data[idx]:
+            local_time = int(str_data[idx].split()[4][:-1])
+            continue
+        if nsamples == 0: continue
+        if ',' not in str_data[idx]: continue
+        if len(str_data[idx].split()) != 5: continue
+        try: timing = int(str_data[idx].split()[0][:-1])
+        except: continue
+        if verbose:
+            print timing, n_count
+        if timing == 0 and n_count != 0:
+            # remove incomplete waveforms
+            raw_data = raw_data[:-n_count]
+            n_count = 0
+        if n_count == 0 and timing != 0:
+            n_count = timing
+        if timing != n_count:
+            raise AssertionError(
+                'Something went wrong! timing != n_count! {0} != '
+                '{1}\n{2}'.format(timing, n_count, str_data[idx])
+            )
+        raw_data.append(map(int, parse(str_data[idx])) + [timestamp, local_time])
+        if n_count >= nsamples: n_count += 1
+        elif n_count == nsamples-1: n_count = 0
+        else: n_count += 1
     raw_data = np.array(raw_data)
-    data = clean_data(raw_data, verbose)
+    data = check_data(raw_data, nsamples, verbose)
 
     timings, run_counts = np.unique(data[:,0], return_counts=True)
 

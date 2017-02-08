@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 """
-Plots DDC2 waveforms
+Plots oscilloscope waveforms
 """
 import argparse
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -26,15 +26,11 @@ def parse_args():
         help='''Numpy files'''
     )
     parser.add_argument(
-        '-b', '--baseline', type=int, metavar='INT', required=False,
-        help='''Baseline of ADC counts'''
-    )
-    parser.add_argument(
         '-n', '--nplot', type=int, metavar='INT', required=False,
         help='''Specify number of waveforms to plot'''
     )
     parser.add_argument(
-        '-o', '--outfile', type=str, default='images/test.png',
+        '-o', '--outfile', type=str, default='images/test_osc.png',
         metavar='FILE', required=False, help='''Output location of plot'''
     )
     args = parser.parse_args()
@@ -47,18 +43,14 @@ def make_wv_plot(data, outfile, nplot):
     ax = fig.add_subplot(111)
 
     ax.set_xlabel('Time (ns)')
-    # ax.set_ylabel('Voltage (A.U.)')
-    ax.set_ylabel('ADC counts')
+    ax.set_ylabel('Voltage (mV)')
 
     idx = 0
     for d in data:
         if idx == nplot: break
-        for e in d:
-            if idx == nplot: break
-
-            ax.scatter(e[:,0], e[:,1], marker='o', c='crimson')
-            ax.plot(e[:,0], e[:,1], linestyle='--', linewidth=1, c='crimson')
-            idx += 1
+        ax.scatter(d[:,0], d[:,1], marker='o', c='crimson')
+        ax.plot(d[:,0], d[:,1], linestyle='--', linewidth=1, c='crimson')
+        idx += 1
 
     for ymaj in ax.yaxis.get_majorticklocs():
         ax.axhline(y=ymaj, ls=':', color='gray', alpha=0.7, linewidth=1)
@@ -73,22 +65,17 @@ def main():
 
     data = []
     for f in args.infiles:
-        data.append(np.load(f))
-    ntot = reduce(add, [x.shape[0] for x in data])
-    print 'Loaded {0} waveforms'.format(ntot)
-
-    for idx in range(len(data)):
-        data[idx] = np.array(data[idx], dtype=np.float32)
-        for e in data[idx]:
-            e[:,0] *=  4 # convert to ns
-            e[:,0] = np.flipud(e[:,0]) # flip in x axis
-            e[:,1] = -e[:,1] # invert in y
-            if args.baseline:
-                e[:,1] += args.baseline
-            # e[:,1] = e[:,1] / 3200. # convert to V
+        data.append(
+            np.genfromtxt(f, skip_header=6, usecols=(3, 4), delimiter=',')
+        )
+    data = np.array(data)
+    for x in data:
+        x[:,0] = x[:,0] * 1e9 # convert to ns
+        x[:,1] = x[:,1] * 1e3 # convert to mV
+    print 'Loaded {0} waveforms'.format(data.shape[0])
 
     if args.nplot is not None: nplot = args.nplot
-    else: nplot = ntot
+    else: nplot = data.shape[0]
     make_wv_plot(data, args.outfile, nplot)
 
     print '=========='
@@ -101,3 +88,4 @@ main.__doc__ = __doc__
 
 if __name__ == '__main__':
     main()
+
