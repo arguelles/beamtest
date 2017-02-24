@@ -45,13 +45,14 @@ echo "ADC_HI_PERF_MODE 3"
 # 2:  32 samples of pre-trigger data
 # 3:  64 samples of pre-trigger data
 # 4: 128 samples of pre-trigger data
-echo "AF_SET_PRE_CONFIG 3"
+echo "AF_SET_PRE_CONFIG 4"
 
 # Set the length of fixed length records (requires AF_SET_CNST_RUN=1)
 # 0: Collect 256 samples 
 # >0: collect pretrigger length + 4x data argument, up to 8000 samples total
 # echo "AF_SET_CNST_CONFIG 0"
-echo "AF_SET_CNST_CONFIG 4"
+# echo "AF_SET_CNST_CONFIG 4"
+echo "AF_SET_CNST_CONFIG 40"
 
 ############### Trigger and Pipeline (TAP) Commands #######################
 
@@ -61,11 +62,12 @@ echo "TAP_SET_TRIG_EN 0"
 # Disable the "less than" trigger
 # echo "TAP_SET_LT 0"
 # Enable the "less than" trigger
-# echo "TAP_SET_LT 1"
-echo "TAP_SET_GT 1"
+echo "TAP_SET_LT 1"
+# echo "TAP_SET_GT 1"
 
 # Set the relative trigger threshold (number of LSBs above or below baseline)
-echo "TAP_SET_THR 13"
+# echo "TAP_SET_THR 13"
+echo "TAP_SET_THR 100"
 
 # Detects baseline for relative trigger threshold
 # Takes average of a test run (256 samples by default) and adjusts

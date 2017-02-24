@@ -193,15 +193,17 @@ def run(infile, ddc_file, time_lim, live, verbose):
                 if d[0] == 0:
                     if live_data == []: continue
                     ax.set_xlim(0, xmax)
-                    # ax.set_ylim(ymin, ymax)
-                    ax.set_ylim(9070-1000, 9070+10)
+                    ax.set_ylim(ymin, ymax)
+                    # ax.set_ylim(9070-50, 9070+10)
                     ax.xaxis.grid(True, which='major')
                     ax.yaxis.grid(True, which='major')
                     ld = np.vstack(live_data)
                     ax.scatter(ld[:,0], ld[:,1], marker='o', c='crimson')
                     ax.plot(ld[:,0], ld[:,1], linestyle='--', linewidth=1,
                             c='crimson')
-                    at = AnchoredText('min = {0}\nmax = {1}'.format(ymin, ymax),
+                    diff = np.max(ld[:,1]) - np.min(ld[:,1])
+                    at = AnchoredText('min = {0}\nmax = {1}\ndiff = '
+                                      '{2}'.format(ymin, ymax, diff),
                                       prop=dict(size=14), frameon=True, loc=1)
                     at.patch.set_boxstyle("round,pad=0.,rounding_size=0.5")
                     ax.add_artist(at)

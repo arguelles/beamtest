@@ -50,6 +50,7 @@ def make_wv_plot(data, outfile, nplot):
     # ax.set_ylabel('Voltage (A.U.)')
     ax.set_ylabel('ADC counts')
 
+    # ax.set_ylim(0, 400)
     idx = 0
     for d in data:
         if idx == nplot: break
@@ -81,7 +82,7 @@ def main():
         data[idx] = np.array(data[idx], dtype=np.float32)
         for e in data[idx]:
             e[:,0] *=  4 # convert to ns
-            e[:,0] = np.flipud(e[:,0]) # flip in x axis
+            # e[:,0] = np.flipud(e[:,0]) # flip in x axis
             e[:,1] = -e[:,1] # invert in y
             if args.baseline:
                 e[:,1] += args.baseline

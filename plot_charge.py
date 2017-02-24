@@ -59,12 +59,15 @@ def make_charge_plot(data, outfile, nplot):
             xmin, xmax = np.min(e[:,0]), np.max(e[:,1])
             tck = interpolate.splrep(e[:,0], e[:,1], s=0)
             area = interpolate.splint(xmin, xmax, tck)
-            # trapz = integrate.trapz(y=e[:,1], x=e[:,0])
+            # area = integrate.trapz(y=e[:,1], x=e[:,0])
             integral.append(area)
             idx += 1
 
     imin, imax = np.min(integral), np.max(integral)
-    binning = np.linspace(imin, imax, 20)
+    # binning = np.logspace(*map(np.log10, (imin, imax)), num=40)
+    # binning = np.linspace(imin, imax, num=40)
+    binning = np.linspace(imin, imin+np.std(integral), num=40)
+    # ax.set_xscale('log')
     hist, _ = np.histogram(integral, binning)
     hist_0 = np.concatenate([[hist[0]], hist])
     ax.step(
