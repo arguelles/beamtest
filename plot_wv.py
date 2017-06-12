@@ -7,6 +7,7 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.interpolate as interpolate
 mpl.rcParams['mathtext.fontset'] = 'custom'
 mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
 mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
@@ -28,14 +29,18 @@ def parse_args():
         help='''Output path of figure'''
     )
     parser.add_argument(
-        '-n', '--nplot', type=int, required=False,
+        '-n', '--nplot', type=int, required=False, default=None,
         metavar='INT', help='''Specify number of waveforms to plot'''
+    )
+    parser.add_argument(
+        '--interpolate', action='store_true', default=False,
+        help='''Plot the interpolated waveforms'''
     )
     args = parser.parse_args()
     return args
 
 
-def run(infile, outfile):
+def run(infile, outfile, interp, nplot):
     """Main function to do plotting"""
 
     store = pd.HDFStore(infile)
@@ -45,14 +50,38 @@ def run(infile, outfile):
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111)
 
-    ax.set_xlim(0, 1000)
-    # ax.set_ylim(0, 400)
+    ax.set_xlim(0, np.max(df['isamp']))
+    ax.set_ylim(0, 1000)
 
     print 'plotting...'
-    df.plot(x='isamp', y='voltage', ax=ax)
+    if not interp:
+        if nplot is None:
+            df.plot(x='isamp', y='voltage', ax=ax)
+        else:
+            wv_idx = df['index'].unique()
+            for i, idx in enumerate(wv_idx):
+                if i == nplot:
+                    break
+                wv_df = df[df['index'] == idx]
+                wv_df.plot(x='isamp', y='voltage', ax=ax)
+    else:
+        wv_idx = df['index'].unique()
+        for i, idx in enumerate(wv_idx):
+            if nplot is not None:
+                if i == nplot:
+                    break
+            wv_df = df[df['index'] == idx]
+            spl = interpolate.splrep(wv_df['isamp'], wv_df['voltage'], s=0)
+            x = np.linspace(0, np.max(wv_df['isamp']), 200)
+            y = interpolate.splev(x, spl)
+            ax.scatter(x, y, marker='o', c='blue')
+            ax.plot(x, y, linestyle='-', linewidth=1, c='blue')
 
     ax.set_xlabel('Time (ns)')
     ax.set_ylabel('Voltage (mV)')
+
+    legend = ax.legend()
+    legend.remove()
 
     for ymaj in ax.yaxis.get_majorticklocs():
         ax.axhline(y=ymaj, ls=':', color='gray', alpha=0.7, linewidth=1)
@@ -67,6 +96,8 @@ def main():
     run(
         infile = args.infile,
         outfile = args.outfile,
+        interp = args.interpolate,
+        nplot = args.nplot
     )
 
     print '=========='
