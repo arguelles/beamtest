@@ -8,6 +8,7 @@ from io import StringIO
 import numpy as np
 import os
 import pandas as pd
+import scipy.interpolate as interpolate
 
 
 def parse_args():
@@ -58,6 +59,7 @@ def run(input_folder, outfile, verbose):
         timestamp = int(wf_arr[5].split('=')[1].strip().split(',')[0])
         Nsamples = int(wf_arr[8].rstrip().split(' ')[-1])
         if verbose: print 'timestamp = {0}'.format(timestamp)
+        if verbose: print 'Nsamples = {0}'.format(Nsamples)
 
         index = range(Nsamples)
         columns = ['isamp', 'adc', 'time']
@@ -67,19 +69,31 @@ def run(input_folder, outfile, verbose):
             delimiter=',',
             usecols=(0, 1, 2)
         )
+        if len(wv_data) != Nsamples:
+            if verbose: print 'skipping incomplete waveform'
+            continue
         # convert to ns
         wv_data[:,0] *= 4
         # renormalise to baseline
         wv_data[:,1] = wv_data[:,1] - baseline
 
         df = pd.DataFrame(wv_data, columns=columns)
+        df = df.assign(index = len(l1_df))
+
         df = df.assign(voltage = df['adc'] * -0.220)
-        # TODO(shivesh): figure out how timestamp works
-        # df = df.assign(timestamp = df['time'] + timestamp)
+        # Internal clock of DDC2 is at 250 MHz (4ns)
+        df = df.assign(timestamp = df['time'] + (4 * timestamp))
+
+        wv_spline = interpolate.splrep(df['isamp'], df['voltage'], s=0)
+        wv_area = interpolate.splint(0, np.max(df['isamp']), wv_spline)
+        # convert to nVs
+        charge = wv_area / 1e3
+        df = df.assign(charge = charge)
+
         df = df.reindex(index)
         l1_df.append(df)
     # l1_df = pd.concat(l1_df, axis=1, keys=range(len(l1_df)))
-    # TODO(shivesh): remove waveforms which are incomplete
+    print 'Number of waveforms = {0}'.format(len(l1_df))
     l1_df = pd.concat(l1_df)
 
     store = pd.HDFStore(outfile)
