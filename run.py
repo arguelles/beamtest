@@ -257,18 +257,30 @@ def run(infile, ddc_file, time_lim, live, verbose):
         elif n_count == nsamples-1: n_count = 0
         else: n_count += 1
     raw_data = np.array(raw_data)
-    data = check_data(raw_data, nsamples, verbose)
+    try:
+        data = check_data(raw_data, nsamples, verbose)
+    except:
+        print 'Error occured, dumping data to dump.npy'
+        np.save('dump', raw_data)
+        raise
 
     timings, run_counts = np.unique(data[:,0], return_counts=True)
 
     if len(set(run_counts)) != 1:
+        print 'Error occured, dumping data to dump.npy'
+        np.save('dump', data)
         raise AssertionError(
             'Something bad happened!\nrun_counts = {0}\nlen(set(run_counts)) '
             '= {1}'.format(run_counts, len(set(run_counts)))
         )
     run_counts = run_counts[0]
 
-    trns_data = data.reshape(run_counts, len(timings), data.shape[1])
+    try:
+        trns_data = data.reshape(run_counts, len(timings), data.shape[1])
+    except:
+        print 'Error occured, dumping data to dump.npy'
+        np.save('dump', data)
+        raise
     if verbose:
         print 'trns_data', trns_data
         print 'trns_data.shape', trns_data.shape

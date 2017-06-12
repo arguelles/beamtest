@@ -62,12 +62,13 @@ echo "TAP_SET_TRIG_EN 0"
 # Disable the "less than" trigger
 # echo "TAP_SET_LT 0"
 # Enable the "less than" trigger
-echo "TAP_SET_LT 1"
-# echo "TAP_SET_GT 1"
+# echo "TAP_SET_LT 1"
+# echo "TAP_SET_LT 1"
 
 # Set the relative trigger threshold (number of LSBs above or below baseline)
 # echo "TAP_SET_THR 13"
-echo "TAP_SET_THR 100"
+# echo "TAP_SET_THR 1000"
+# echo "TAP_SET_THR 100"
 
 # Detects baseline for relative trigger threshold
 # Takes average of a test run (256 samples by default) and adjusts
@@ -78,7 +79,7 @@ echo "BASELINE_ADJUST"
 echo "TAP_GET_BASELINE"
 
 # Enable the threshold-based trigger
-echo "TAP_SET_TRIG_EN 1"
+# echo "TAP_SET_TRIG_EN 1"
 
 # Length of Test run
 echo "AF_SET_TEST_CONFIG 80"
