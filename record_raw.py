@@ -5,6 +5,7 @@ saves the data to disk.
 """
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from copy import deepcopy
+from datetime import datetime
 import gzip
 from multiprocessing import Process
 import numpy as np
@@ -96,7 +97,7 @@ def run(settings, ddc_dfile, time_lim, outdir, chunk, verbose):
                         raise AssertionError('Reset the DDC2 and run again')
                     if 'TAP_GET_BASELINE' in line:
                         stream += 'BASELINE = ' + line.split(' ')[-1][1:-2]
-                        stream += '\n' + '\n'
+                        stream += '\n'
                     idx += 1
                     continue
                 else:
@@ -112,6 +113,9 @@ def run(settings, ddc_dfile, time_lim, outdir, chunk, verbose):
                 if time - start_t < 2 or '---------------------------' in line:
                     continue
                 else:
+                    initial_timestamp = datetime.now()
+                    stream += 'INITIAL TIMESTAMP = {0}'.format(datetime.now())
+                    stream += '\n\n'
                     start_t = timer()
                     skip_initial_wv = False
 
@@ -121,11 +125,18 @@ def run(settings, ddc_dfile, time_lim, outdir, chunk, verbose):
             if time - start_t > time_lim:
                 break
 
+            # if 'timestamp' in line:
+            #     stream += 'datetime timestamp = {0}\n'.format(datetime.now())
+
             stream += line
 
             if idx % chunk == 0:
                 s_copy = deepcopy(stream)
                 def save_to_disk():
+                    try:
+                        os.makedirs(outdir, mode=0755)
+                    except OSError as err:
+                        pass
                     of = outdir+'/level0_{0:06d}.txt.gz'.format(int(idx/chunk))
                     with gzip.GzipFile(of, 'wb') as outfile:
                         outfile.write(s_copy)
@@ -143,7 +154,12 @@ def run(settings, ddc_dfile, time_lim, outdir, chunk, verbose):
         raise
     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
+    try:
+        os.makedirs(outdir, mode=0755)
+    except OSError as err:
+        pass
     outfile = outdir+'/level0_{0:06d}.txt.gz'.format(int(idx/chunk))
+
     with gzip.GzipFile(outfile, 'wb') as outfile:
         outfile.write(stream)
     stream = ''

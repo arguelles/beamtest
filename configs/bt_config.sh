@@ -53,6 +53,7 @@ echo "AF_SET_PRE_CONFIG 4"
 # echo "AF_SET_CNST_CONFIG 0"
 # echo "AF_SET_CNST_CONFIG 4"
 echo "AF_SET_CNST_CONFIG 40"
+# echo "AF_SET_CNST_CONFIG 100"
 
 ############### Trigger and Pipeline (TAP) Commands #######################
 
@@ -82,7 +83,7 @@ echo "TAP_GET_BASELINE"
 # echo "TAP_SET_TRIG_EN 1"
 
 # Length of Test run
-echo "AF_SET_TEST_CONFIG 80"
+echo "AF_SET_TEST_CONFIG 40"
 
 ############### HVS Commands #######################
 

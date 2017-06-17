@@ -33,6 +33,10 @@ def parse_args():
         metavar='INT', help='''Specify number of waveforms to plot'''
     )
     parser.add_argument(
+        '--ymax', type=int, required=False, default=1000,
+        metavar='INT', help='''Y axis maximum value'''
+    )
+    parser.add_argument(
         '--interpolate', action='store_true', default=False,
         help='''Plot the interpolated waveforms'''
     )
@@ -40,7 +44,7 @@ def parse_args():
     return args
 
 
-def run(infile, outfile, interp, nplot):
+def run(infile, outfile, interp, nplot, ymax):
     """Main function to do plotting"""
 
     store = pd.HDFStore(infile)
@@ -51,7 +55,7 @@ def run(infile, outfile, interp, nplot):
     ax = fig.add_subplot(111)
 
     ax.set_xlim(0, np.max(df['isamp']))
-    ax.set_ylim(0, 1000)
+    ax.set_ylim(-ymax/10, ymax)
 
     print 'plotting...'
     if not interp:
@@ -81,7 +85,8 @@ def run(infile, outfile, interp, nplot):
     ax.set_ylabel('Voltage (mV)')
 
     legend = ax.legend()
-    legend.remove()
+    if legend is not None:
+        legend.remove()
 
     for ymaj in ax.yaxis.get_majorticklocs():
         ax.axhline(y=ymaj, ls=':', color='gray', alpha=0.7, linewidth=1)
@@ -97,7 +102,8 @@ def main():
         infile = args.infile,
         outfile = args.outfile,
         interp = args.interpolate,
-        nplot = args.nplot
+        nplot = args.nplot,
+        ymax = args.ymax
     )
 
     print '=========='
